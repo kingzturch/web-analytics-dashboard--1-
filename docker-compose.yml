@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  pulse-analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pulse-analytics-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - .env.example
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

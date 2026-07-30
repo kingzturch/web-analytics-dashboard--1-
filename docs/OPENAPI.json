@@ -1,0 +1,144 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pulse Analytics Collector & Telemetry API",
+    "version": "1.0.0-RC1",
+    "description": "Production-grade, high-throughput analytics collector API with queue-backed asynchronous bulk ingestion, idempotency de-duplication, and rate limiting."
+  },
+  "servers": [
+    {
+      "url": "https://{domain}/api/v1",
+      "description": "Production API Server"
+    }
+  ],
+  "paths": {
+    "/collect/pageview": {
+      "post": {
+        "summary": "Collect Pageview Telemetry",
+        "description": "Ingests a pageview telemetry record into the queue. Validates API Key, sanitizes payload, and queues for asynchronous bulk insertion.",
+        "headers": {
+          "x-api-key": {
+            "description": "Ingestion secret API key (pa_live_sec_...)",
+            "schema": { "type": "string" },
+            "required": true
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["apiKey", "visitorUid", "sessionUid", "url", "path"],
+                "properties": {
+                  "apiKey": { "type": "string" },
+                  "visitorUid": { "type": "string", "example": "vis_92831a" },
+                  "sessionUid": { "type": "string", "example": "ses_48102b" },
+                  "url": { "type": "string", "example": "https://example.com/checkout" },
+                  "path": { "type": "string", "example": "/checkout" },
+                  "title": { "type": "string", "example": "Checkout Page" },
+                  "referrer": { "type": "string", "example": "https://google.com" },
+                  "browser": { "type": "string", "example": "Chrome" },
+                  "operatingSystem": { "type": "string", "example": "macOS" },
+                  "deviceType": { "type": "string", "enum": ["desktop", "mobile", "tablet"] },
+                  "idempotencyKey": { "type": "string", "example": "req_81923a_17000000" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Telemetry Enqueued Successfully",
+            "content": {
+              "application/json": {
+                "example": { "status": "enqueued", "page_view_id": "pv_81923a" }
+              }
+            }
+          },
+          "400": { "description": "Malformed Payload / Validation Error" },
+          "401": { "description": "Invalid API Key" },
+          "429": { "description": "Rate Limit Exceeded" }
+        }
+      }
+    },
+    "/collect/event": {
+      "post": {
+        "summary": "Collect Custom Event / Web Vitals",
+        "description": "Ingests a interaction click, scroll, form submit, or performance Web Vitals event.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["apiKey", "visitorUid", "sessionUid", "eventName"],
+                "properties": {
+                  "apiKey": { "type": "string" },
+                  "visitorUid": { "type": "string" },
+                  "sessionUid": { "type": "string" },
+                  "pageViewId": { "type": "string" },
+                  "eventName": { "type": "string", "example": "button_click" },
+                  "eventCategory": { "type": "string", "example": "conversion" },
+                  "eventAction": { "type": "string", "example": "purchase_submit" },
+                  "eventLabel": { "type": "string", "example": "Plan Pro" },
+                  "eventValue": { "type": "number", "example": 99.00 },
+                  "idempotencyKey": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Event Enqueued Successfully",
+            "content": {
+              "application/json": {
+                "example": { "status": "enqueued" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collect/heartbeat": {
+      "post": {
+        "summary": "Adaptive Heartbeat & Session Decay Ping",
+        "description": "Updates active session pulse and records session duration.",
+        "responses": {
+          "200": {
+            "description": "Heartbeat Acknowledged",
+            "content": {
+              "application/json": {
+                "example": { "status": "acknowledged" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "System & Queue Health Check",
+        "description": "Returns operational status of Express collector, Queue depth, Supabase connection latency, CPU, and Memory usage.",
+        "responses": {
+          "200": {
+            "description": "System Healthy",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok",
+                  "timestamp": "2026-07-29T10:00:00Z",
+                  "uptimeSeconds": 86400,
+                  "memoryUsage": { "rssMb": 45, "heapUsedMb": 28 },
+                  "queue": { "buffered": 0, "activeWorkers": 1, "retryQueue": 0 },
+                  "supabase": { "connected": true, "pingMs": 14 }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

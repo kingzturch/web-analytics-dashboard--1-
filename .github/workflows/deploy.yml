@@ -1,0 +1,54 @@
+name: Pulse Analytics CI/CD Deployment Pipeline
+
+on:
+  push:
+    branches: [ main, release/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-and-test:
+    name: Build, Lint & Automated Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Code Linter & Type Check
+        run: npm run lint
+
+      - name: Execute Automated Test Suite
+        run: npx tsx tests/runner.ts
+
+      - name: Run Production Bundle Build
+        run: npm run build
+
+  deploy-production:
+    name: Build Docker Container & Deploy Staging/Production
+    needs: validate-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Container
+        run: docker build -t pulse-analytics:v1.0.0 .
+
+      - name: Verify Container Health Check
+        run: |
+          docker run -d --name test-app -p 3000:3000 pulse-analytics:v1.0.0
+          sleep 5
+          curl --fail http://localhost:3000/health || exit 1
+          docker stop test-app && docker rm test-app

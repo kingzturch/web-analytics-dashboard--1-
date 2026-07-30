@@ -1,0 +1,6 @@
+{
+  "name": "Web Analytics Dashboard",
+  "description": "Modern, fast, and responsive web analytics platform for site traffic, sessions, page views, and events.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
